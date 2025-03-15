@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react"
 import { StyleSheet, Text, Animated, View } from "react-native"
 import { useGameLogic } from "../utils/gameLogic"
 
-const GridTile = ({ value, row, col, hasMoved, isMerged }) => {
+const GridTile = ({ value, row, col, hasMoved, isMerged, size = 70, fontSize = 28, theme }) => {
   const { getColor, getTextColor } = useGameLogic()
   const scale = useRef(new Animated.Value(1)).current
   const opacity = useRef(new Animated.Value(1)).current
@@ -51,9 +51,10 @@ const GridTile = ({ value, row, col, hasMoved, isMerged }) => {
     }
     // Animation for moving tiles
     else if (hasMoved && (prevPosition.current.row !== row || prevPosition.current.col !== col)) {
-      // Calculate movement distance (each tile is 80px including margin)
-      const moveX = (prevPosition.current.col - col) * 80
-      const moveY = (prevPosition.current.row - row) * 80
+      // Calculate movement distance (each tile is size + margin)
+      const tileFullSize = size + 10 // 10 is the margin
+      const moveX = (prevPosition.current.col - col) * tileFullSize
+      const moveY = (prevPosition.current.row - row) * tileFullSize
 
       // Set initial position
       translateX.setValue(moveX)
@@ -79,19 +80,31 @@ const GridTile = ({ value, row, col, hasMoved, isMerged }) => {
     // Update previous value and position
     prevValue.current = value
     prevPosition.current = { row, col }
-  }, [value, row, col, hasMoved, isMerged])
+  }, [value, row, col, hasMoved, isMerged, size])
 
   const getFontSize = () => {
-    if (!value) return 28
+    if (!value) return fontSize
     const length = value.toString().length
-    if (length === 1) return 32
-    if (length === 2) return 28
-    if (length === 3) return 24
-    return 20
+    if (length === 1) return fontSize
+    if (length === 2) return fontSize * 0.9
+    if (length === 3) return fontSize * 0.8
+    if (length === 4) return fontSize * 0.7
+    return fontSize * 0.6
   }
 
   if (!value) {
-    return <View style={[styles.tile, { backgroundColor: getColor() }]} />
+    return (
+      <View
+        style={[
+          styles.tile,
+          {
+            backgroundColor: theme ? theme.tile : getColor(),
+            width: size,
+            height: size,
+          },
+        ]}
+      />
+    )
   }
 
   return (
@@ -100,6 +113,8 @@ const GridTile = ({ value, row, col, hasMoved, isMerged }) => {
         styles.tile,
         {
           backgroundColor: getColor(value),
+          width: size,
+          height: size,
           transform: [{ translateX }, { translateY }, { scale }],
           opacity,
         },
@@ -122,8 +137,6 @@ const GridTile = ({ value, row, col, hasMoved, isMerged }) => {
 
 const styles = StyleSheet.create({
   tile: {
-    width: 70,
-    height: 70,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",

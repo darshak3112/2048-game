@@ -1,98 +1,92 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  Switch,
-  SafeAreaView,
-  StatusBar,
-  Alert,
-  Platform
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
+"use client"
+
+import { useState, useEffect } from "react"
+import { StyleSheet, Text, View, TouchableOpacity, Switch, SafeAreaView, StatusBar, Alert } from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import * as Notifications from "expo-notifications"
+import { useGameLogic } from "../utils/gameLogic"
 
 const NotificationPermission = () => {
-  const navigation = useNavigation();
-  const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false);
-  const [achievementAlertsEnabled, setAchievementAlertsEnabled] = useState(false);
-  const [notificationsPermission, setNotificationsPermission] = useState(false);
+  const navigation = useNavigation()
+  const { theme } = useGameLogic()
+  const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false)
+  const [achievementAlertsEnabled, setAchievementAlertsEnabled] = useState(false)
+  const [notificationsPermission, setNotificationsPermission] = useState(false)
 
   useEffect(() => {
-    checkNotificationSettings();
-  }, []);
+    checkNotificationSettings()
+  }, [])
 
   const checkNotificationSettings = async () => {
     try {
       // Check system permission status
-      const { status } = await Notifications.getPermissionsAsync();
-      setNotificationsPermission(status === 'granted');
-      
+      const { status } = await Notifications.getPermissionsAsync()
+      setNotificationsPermission(status === "granted")
+
       // Load user preferences from storage
-      const dailyReminder = await AsyncStorage.getItem('@2048_dailyReminder');
-      const achievementAlerts = await AsyncStorage.getItem('@2048_achievementAlerts');
-      
-      setDailyReminderEnabled(dailyReminder === 'true');
-      setAchievementAlertsEnabled(achievementAlerts === 'true');
+      const dailyReminder = await AsyncStorage.getItem("@2048_dailyReminder")
+      const achievementAlerts = await AsyncStorage.getItem("@2048_achievementAlerts")
+
+      setDailyReminderEnabled(dailyReminder === "true")
+      setAchievementAlertsEnabled(achievementAlerts === "true")
     } catch (error) {
-      console.log('Error loading notification settings', error);
+      console.log("Error loading notification settings", error)
     }
-  };
+  }
 
   const requestPermissions = async () => {
     try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync()
+      if (status !== "granted") {
         Alert.alert(
-          'Permission Required',
-          'To receive notifications, you need to enable permissions in your device settings.',
-          [{ text: 'OK' }]
-        );
-        return false;
+          "Permission Required",
+          "To receive notifications, you need to enable permissions in your device settings.",
+          [{ text: "OK" }],
+        )
+        return false
       }
-      setNotificationsPermission(true);
-      return true;
+      setNotificationsPermission(true)
+      return true
     } catch (error) {
-      console.log('Error requesting notification permissions', error);
-      return false;
+      console.log("Error requesting notification permissions", error)
+      return false
     }
-  };
+  }
 
   const toggleDailyReminder = async (value) => {
     if (value && !notificationsPermission) {
-      const granted = await requestPermissions();
-      if (!granted) return;
+      const granted = await requestPermissions()
+      if (!granted) return
     }
-    
-    setDailyReminderEnabled(value);
-    await AsyncStorage.setItem('@2048_dailyReminder', value.toString());
-    
+
+    setDailyReminderEnabled(value)
+    await AsyncStorage.setItem("@2048_dailyReminder", value.toString())
+
     if (value) {
-      scheduleDailyReminder();
+      scheduleDailyReminder()
     } else {
-      cancelDailyReminder();
+      cancelDailyReminder()
     }
-  };
+  }
 
   const toggleAchievementAlerts = async (value) => {
     if (value && !notificationsPermission) {
-      const granted = await requestPermissions();
-      if (!granted) return;
+      const granted = await requestPermissions()
+      if (!granted) return
     }
-    
-    setAchievementAlertsEnabled(value);
-    await AsyncStorage.setItem('@2048_achievementAlerts', value.toString());
-  };
+
+    setAchievementAlertsEnabled(value)
+    await AsyncStorage.setItem("@2048_achievementAlerts", value.toString())
+  }
 
   const scheduleDailyReminder = async () => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-    
+    await Notifications.cancelAllScheduledNotificationsAsync()
+
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '2048 Daily Challenge',
-        body: 'Ready for your daily 2048 challenge? Your game is waiting!',
+        title: "2048 Daily Challenge",
+        body: "Ready for your daily 2048 challenge? Your game is waiting!",
         sound: true,
       },
       trigger: {
@@ -100,132 +94,117 @@ const NotificationPermission = () => {
         minute: 0,
         repeats: true,
       },
-    });
-  };
+    })
+  }
 
   const cancelDailyReminder = async () => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-  };
+    await Notifications.cancelAllScheduledNotificationsAsync()
+  }
 
   const resetSettings = async () => {
-    Alert.alert(
-      'Reset Settings',
-      'Are you sure you want to reset all notification settings?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert("Reset Settings", "Are you sure you want to reset all notification settings?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Reset",
+        onPress: async () => {
+          setDailyReminderEnabled(false)
+          setAchievementAlertsEnabled(false)
+          await AsyncStorage.removeItem("@2048_dailyReminder")
+          await AsyncStorage.removeItem("@2048_achievementAlerts")
+          await Notifications.cancelAllScheduledNotificationsAsync()
         },
-        {
-          text: 'Reset',
-          onPress: async () => {
-            setDailyReminderEnabled(false);
-            setAchievementAlertsEnabled(false);
-            await AsyncStorage.removeItem('@2048_dailyReminder');
-            await AsyncStorage.removeItem('@2048_achievementAlerts');
-            await Notifications.cancelAllScheduledNotificationsAsync();
-          },
-          style: 'destructive',
-        },
-      ]
-    );
-  };
+        style: "destructive",
+      },
+    ])
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.name === "Dark" ? "light-content" : "dark-content"} />
+
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={[styles.backButtonText, { color: theme.text }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
       </View>
-      
+
       <View style={styles.settingsContainer}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        
-        <View style={styles.settingItem}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Notifications</Text>
+
+        <View style={[styles.settingItem, { borderBottomColor: theme.grid }]}>
           <View style={styles.settingTextContainer}>
-            <Text style={styles.settingTitle}>Daily Reminder</Text>
-            <Text style={styles.settingDescription}>
+            <Text style={[styles.settingTitle, { color: theme.text }]}>Daily Reminder</Text>
+            <Text style={[styles.settingDescription, { color: theme.text }]}>
               Receive a daily reminder to play 2048
             </Text>
           </View>
           <Switch
-            trackColor={{ false: '#BBADA0', true: '#8F7A66' }}
-            thumbColor={dailyReminderEnabled ? '#F9F6F2' : '#F5F5F5'}
-            ios_backgroundColor="#BBADA0"
+            trackColor={{ false: theme.grid, true: theme.button }}
+            thumbColor={dailyReminderEnabled ? theme.buttonText : "#F5F5F5"}
+            ios_backgroundColor={theme.grid}
             onValueChange={toggleDailyReminder}
             value={dailyReminderEnabled}
           />
         </View>
-        
-        <View style={styles.settingItem}>
+
+        <View style={[styles.settingItem, { borderBottomColor: theme.grid }]}>
           <View style={styles.settingTextContainer}>
-            <Text style={styles.settingTitle}>Achievement Alerts</Text>
-            <Text style={styles.settingDescription}>
+            <Text style={[styles.settingTitle, { color: theme.text }]}>Achievement Alerts</Text>
+            <Text style={[styles.settingDescription, { color: theme.text }]}>
               Get notified when you reach new milestones
             </Text>
           </View>
           <Switch
-            trackColor={{ false: '#BBADA0', true: '#8F7A66' }}
-            thumbColor={achievementAlertsEnabled ? '#F9F6F2' : '#F5F5F5'}
-            ios_backgroundColor="#BBADA0"
+            trackColor={{ false: theme.grid, true: theme.button }}
+            thumbColor={achievementAlertsEnabled ? theme.buttonText : "#F5F5F5"}
+            ios_backgroundColor={theme.grid}
             onValueChange={toggleAchievementAlerts}
             value={achievementAlertsEnabled}
           />
         </View>
-        
-        <Text style={styles.permissionStatus}>
-          {notificationsPermission 
-            ? 'Notification permissions enabled' 
-            : 'Notification permissions not granted'}
+
+        <Text style={[styles.permissionStatus, { color: theme.text }]}>
+          {notificationsPermission ? "Notification permissions enabled" : "Notification permissions not granted"}
         </Text>
-        
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={resetSettings}
-        >
+
+        <TouchableOpacity style={[styles.resetButton, { backgroundColor: "#F67C5F" }]} onPress={resetSettings}>
           <Text style={styles.resetButtonText}>Reset All Settings</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.versionContainer}>
-        <Text style={styles.versionText}>2048 Game v1.0.0</Text>
+        <Text style={[styles.versionText, { color: theme.text }]}>2048 Game v1.0.0</Text>
       </View>
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF8EF',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE4DA',
+    borderBottomColor: "#EEE4DA",
   },
   backButton: {
     marginRight: 15,
   },
   backButtonText: {
     fontSize: 18,
-    color: '#8F7A66',
-    fontWeight: '500',
+    fontWeight: "500",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#776E65',
+    fontWeight: "bold",
   },
   settingsContainer: {
     flex: 1,
@@ -233,17 +212,15 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#776E65',
+    fontWeight: "bold",
     marginBottom: 15,
   },
   settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE4DA',
   },
   settingTextContainer: {
     flex: 1,
@@ -251,41 +228,37 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#776E65',
+    fontWeight: "500",
     marginBottom: 5,
   },
   settingDescription: {
     fontSize: 14,
-    color: '#968A84',
   },
   permissionStatus: {
     marginTop: 20,
     fontSize: 14,
-    fontStyle: 'italic',
-    color: '#968A84',
-    textAlign: 'center',
+    fontStyle: "italic",
+    textAlign: "center",
   },
   resetButton: {
-    backgroundColor: '#F67C5F',
     paddingVertical: 12,
     borderRadius: 6,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 30,
   },
   resetButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   versionContainer: {
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   versionText: {
     fontSize: 14,
-    color: '#BBADA0',
   },
-});
+})
 
-export default NotificationPermission;
+export default NotificationPermission
+

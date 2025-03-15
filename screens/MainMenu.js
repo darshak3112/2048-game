@@ -1,136 +1,307 @@
-import React from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  Image,
-  SafeAreaView,
-  StatusBar
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useGameLogic } from '../utils/gameLogic';
+"use client"
+
+import { useState } from "react"
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, StatusBar, ScrollView, Modal } from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import { useGameLogic } from "../utils/gameLogic"
+import ThemeSelector from "../components/ThemeSelector"
 
 const MainMenu = () => {
-  const navigation = useNavigation();
-  const { highScore } = useGameLogic();
+  const navigation = useNavigation()
+  const { highScore, gridSize, changeGridSize, boardSizes, ongoingGames, theme } = useGameLogic()
+
+  const [showBoardSizeModal, setShowBoardSizeModal] = useState(false)
+  const [showThemeModal, setShowThemeModal] = useState(false)
+
+  const hasOngoingGames = Object.keys(ongoingGames).length > 0
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.name === "Dark" ? "light-content" : "dark-content"} />
+
       <View style={styles.logoContainer}>
-        <Text style={styles.logo}>2048</Text>
-        <Text style={styles.tagline}>Join the numbers and get to 2048!</Text>
+        <Text style={[styles.logo, { color: theme.text }]}>2048</Text>
+        <Text style={[styles.tagline, { color: theme.text }]}>Join the numbers and get to 2048!</Text>
       </View>
-      
+
       <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>HIGH SCORE</Text>
-          <Text style={styles.statValue}>{highScore}</Text>
+        <View style={[styles.statBox, { backgroundColor: theme.grid }]}>
+          <Text style={[styles.statLabel, { color: theme.buttonText }]}>HIGH SCORE</Text>
+          <Text style={[styles.statValue, { color: theme.buttonText }]}>{highScore}</Text>
+        </View>
+        <View style={[styles.statBox, { backgroundColor: theme.grid }]}>
+          <Text style={[styles.statLabel, { color: theme.buttonText }]}>BOARD SIZE</Text>
+          <Text style={[styles.statValue, { color: theme.buttonText }]}>
+            {gridSize}×{gridSize}
+          </Text>
         </View>
       </View>
-      
+
+      {hasOngoingGames && (
+        <View style={styles.ongoingGamesContainer}>
+          <Text style={[styles.ongoingGamesTitle, { color: theme.text }]}>Continue Playing</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.ongoingGamesScroll}
+          >
+            {Object.keys(ongoingGames).map((size) => (
+              <TouchableOpacity
+                key={`ongoing-${size}`}
+                style={[styles.ongoingGameCard, { backgroundColor: theme.secondaryButton }]}
+                onPress={() => {
+                  changeGridSize(Number.parseInt(size))
+                  navigation.navigate("GameScreen")
+                }}
+              >
+                <Text style={[styles.ongoingGameSize, { color: theme.buttonText }]}>
+                  {size}×{size}
+                </Text>
+                <Text style={[styles.ongoingGameScore, { color: theme.buttonText }]}>
+                  Score: {ongoingGames[size].score}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       <View style={styles.menuContainer}>
-        <TouchableOpacity 
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('GameScreen')}
+        <TouchableOpacity
+          style={[styles.menuButton, { backgroundColor: theme.button }]}
+          onPress={() => navigation.navigate("GameScreen")}
         >
-          <Text style={styles.menuButtonText}>PLAY GAME</Text>
+          <Text style={[styles.menuButtonText, { color: theme.buttonText }]}>PLAY GAME</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.menuButton, styles.secondaryButton]}
-          onPress={() => navigation.navigate('NotificationPermission')}
+
+        <TouchableOpacity
+          style={[styles.menuButton, { backgroundColor: theme.secondaryButton }]}
+          onPress={() => setShowBoardSizeModal(true)}
         >
-          <Text style={styles.menuButtonText}>SETTINGS</Text>
+          <Text style={[styles.menuButtonText, { color: theme.buttonText }]}>CHANGE BOARD SIZE</Text>
         </TouchableOpacity>
-        
-        {/* Add more menu options as needed */}
+
+        <TouchableOpacity
+          style={[styles.menuButton, { backgroundColor: theme.secondaryButton }]}
+          onPress={() => setShowThemeModal(true)}
+        >
+          <Text style={[styles.menuButtonText, { color: theme.buttonText }]}>CHANGE THEME</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuButton, { backgroundColor: theme.secondaryButton }]}
+          onPress={() => navigation.navigate("NotificationPermission")}
+        >
+          <Text style={[styles.menuButtonText, { color: theme.buttonText }]}>SETTINGS</Text>
+        </TouchableOpacity>
       </View>
-      
+
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Swipe to combine tiles. Get to the 2048 tile!
-        </Text>
+        <Text style={[styles.footerText, { color: theme.text }]}>Swipe to combine tiles. Get to the 2048 tile!</Text>
       </View>
+
+      {/* Board Size Selection Modal */}
+      <Modal
+        transparent={true}
+        visible={showBoardSizeModal}
+        animationType="fade"
+        onRequestClose={() => setShowBoardSizeModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Select Board Size</Text>
+
+            <ScrollView style={styles.boardSizeList}>
+              {boardSizes.map((size) => (
+                <TouchableOpacity
+                  key={`size-${size}`}
+                  style={[
+                    styles.boardSizeOption,
+                    {
+                      borderBottomColor: theme.secondaryButton,
+                      backgroundColor: gridSize === size ? theme.secondaryButton : "transparent",
+                    },
+                  ]}
+                  onPress={() => {
+                    changeGridSize(size)
+                    setShowBoardSizeModal(false)
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.boardSizeText,
+                      {
+                        color: gridSize === size ? theme.buttonText : theme.text,
+                        fontWeight: gridSize === size ? "bold" : "normal",
+                      },
+                    ]}
+                  >
+                    {size} × {size}
+                  </Text>
+                  {ongoingGames[size] && (
+                    <Text style={[styles.ongoingLabel, { color: theme.text }]}>Game in progress</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.modalButton, { backgroundColor: theme.secondaryButton }]}
+              onPress={() => setShowBoardSizeModal(false)}
+            >
+              <Text style={[styles.modalButtonText, { color: theme.buttonText }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Theme Selector Modal */}
+      <ThemeSelector visible={showThemeModal} onClose={() => setShowThemeModal(false)} />
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF8EF',
     padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
+    alignItems: "center",
+    marginBottom: 30,
   },
   logo: {
     fontSize: 72,
-    fontWeight: 'bold',
-    color: '#776E65',
+    fontWeight: "bold",
     marginBottom: 10,
   },
   tagline: {
     fontSize: 18,
-    color: '#776E65',
-    textAlign: 'center',
+    textAlign: "center",
   },
   statsContainer: {
-    flexDirection: 'row',
-    marginBottom: 50,
+    flexDirection: "row",
+    marginBottom: 30,
+    justifyContent: "space-between",
+    width: "80%",
   },
   statBox: {
-    backgroundColor: '#BBADA0',
     padding: 15,
     borderRadius: 6,
-    alignItems: 'center',
-    minWidth: 150,
+    alignItems: "center",
+    minWidth: 120,
   },
   statLabel: {
-    color: '#EEE4DA',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   statValue: {
-    color: 'white',
     fontSize: 26,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  ongoingGamesContainer: {
+    width: "100%",
+    marginBottom: 30,
+  },
+  ongoingGamesTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  ongoingGamesScroll: {
+    paddingHorizontal: 10,
+  },
+  ongoingGameCard: {
+    padding: 15,
+    borderRadius: 8,
+    marginHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 100,
+    minHeight: 100,
+  },
+  ongoingGameSize: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  ongoingGameScore: {
+    fontSize: 14,
   },
   menuContainer: {
-    width: '80%',
-    marginBottom: 40,
+    width: "80%",
+    marginBottom: 30,
   },
   menuButton: {
-    backgroundColor: '#8F7A66',
     paddingVertical: 15,
     borderRadius: 6,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 15,
   },
-  secondaryButton: {
-    backgroundColor: '#BBADA0',
-  },
   menuButtonText: {
-    color: 'white',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   footer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 30,
     paddingHorizontal: 20,
   },
   footerText: {
     fontSize: 14,
-    color: '#776E65',
-    textAlign: 'center',
+    textAlign: "center",
   },
-});
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    padding: 20,
+    borderRadius: 10,
+    width: "80%",
+    maxHeight: "70%",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  boardSizeList: {
+    maxHeight: 300,
+  },
+  boardSizeOption: {
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderRadius: 6,
+    marginBottom: 5,
+  },
+  boardSizeText: {
+    fontSize: 18,
+    textAlign: "center",
+  },
+  ongoingLabel: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 5,
+    fontStyle: "italic",
+  },
+  modalButton: {
+    paddingVertical: 12,
+    borderRadius: 6,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+})
 
-export default MainMenu;
+export default MainMenu
+
