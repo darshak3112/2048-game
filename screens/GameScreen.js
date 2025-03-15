@@ -164,12 +164,6 @@ const GameScreen = () => {
         <Animated.View
           style={[
             styles.gridContainer,
-            {
-              transform: [
-                { translateX: gridTranslateX },
-                { translateY: gridTranslateY },
-              ],
-            },
           ]}
         >
           {_.range(4).map((row) => (
