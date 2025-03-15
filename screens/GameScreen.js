@@ -1,35 +1,124 @@
-import React from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  Modal, 
-  SafeAreaView 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Modal,
+  SafeAreaView,
+  LayoutAnimation,
+  Animated,
 } from 'react-native';
 import GestureRecognizer from 'react-native-swipe-gestures';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGameLogic } from '../utils/gameLogic';
 import GridTile from '../components/GridTile';
 import _ from 'lodash';
 
 const GameScreen = () => {
   const navigation = useNavigation();
-  const { 
-    gridData, 
-    score, 
-    highScore, 
-    gameOver, 
-    onSwipeUp, 
-    onSwipeDown, 
-    onSwipeLeft, 
-    onSwipeRight, 
-    newGame 
+  const {
+    gridData,
+    score,
+    highScore,
+    gameOver,
+    onSwipeUp,
+    onSwipeDown,
+    onSwipeLeft,
+    onSwipeRight,
+    newGame,
+    loadGameState,
   } = useGameLogic();
+
+  const [showSavedGameModal, setShowSavedGameModal] = useState(false);
+
+  // Animated values for directional slide effect
+  const gridTranslateX = useRef(new Animated.Value(0)).current;
+  const gridTranslateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const checkForSavedGame = async () => {
+      try {
+        const savedState = await AsyncStorage.getItem('@2048_gameState');
+        if (savedState) {
+          setShowSavedGameModal(true);
+        }
+      } catch (error) {
+        console.log('Error checking saved game state', error);
+      }
+    };
+    checkForSavedGame();
+  }, []);
 
   const config = {
     velocityThreshold: 0.3,
-    directionalOffsetThreshold: 80
+    directionalOffsetThreshold: 80,
+  };
+
+  // Each handler calls the swipe function and then runs an Animated sequence
+  const handleSwipeRight = () => {
+    onSwipeRight();
+    Animated.sequence([
+      Animated.timing(gridTranslateX, {
+        toValue: 20, // slide to right
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(gridTranslateX, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleSwipeLeft = () => {
+    onSwipeLeft();
+    Animated.sequence([
+      Animated.timing(gridTranslateX, {
+        toValue: -20, // slide to left
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(gridTranslateX, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleSwipeUp = () => {
+    onSwipeUp();
+    Animated.sequence([
+      Animated.timing(gridTranslateY, {
+        toValue: -20, // slide upward
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(gridTranslateY, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleSwipeDown = () => {
+    onSwipeDown();
+    Animated.sequence([
+      Animated.timing(gridTranslateY, {
+        toValue: 20, // slide downward
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(gridTranslateY, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
   return (
@@ -52,8 +141,8 @@ const GameScreen = () => {
         <TouchableOpacity style={styles.button} onPress={newGame}>
           <Text style={styles.buttonText}>New Game</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.button} 
+        <TouchableOpacity
+          style={styles.button}
           onPress={() => navigation.navigate('MainMenu')}
         >
           <Text style={styles.buttonText}>Menu</Text>
@@ -65,35 +154,68 @@ const GameScreen = () => {
       </Text>
 
       <GestureRecognizer
-        onSwipeUp={onSwipeUp}
-        onSwipeDown={onSwipeDown}
-        onSwipeLeft={onSwipeLeft}
-        onSwipeRight={onSwipeRight}
+        onSwipeUp={handleSwipeUp}
+        onSwipeDown={handleSwipeDown}
+        onSwipeLeft={handleSwipeLeft}
+        onSwipeRight={handleSwipeRight}
         config={config}
         style={styles.gestureContainer}
       >
-        <View style={styles.gridContainer}>
-          {_.range(4).map(row => (
+        <Animated.View
+          style={[
+            styles.gridContainer,
+            {
+              transform: [
+                { translateX: gridTranslateX },
+                { translateY: gridTranslateY },
+              ],
+            },
+          ]}
+        >
+          {_.range(4).map((row) => (
             <View key={`row-${row}`} style={styles.gridRow}>
-              {_.range(4).map(col => (
-                <GridTile 
-                  key={`cell-${row}-${col}`} 
-                  value={gridData[row][col]} 
-                  row={row} 
-                  col={col} 
+              {_.range(4).map((col) => (
+                <GridTile
+                  key={`cell-${row}-${col}`}
+                  value={gridData[row][col]}
+                  row={row}
+                  col={col}
                 />
               ))}
             </View>
           ))}
-        </View>
+        </Animated.View>
       </GestureRecognizer>
 
+      {/* Saved Game Modal */}
+      <Modal transparent={true} visible={showSavedGameModal} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Continue Saved Game?</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={async () => {
+                await loadGameState();
+                setShowSavedGameModal(false);
+              }}
+            >
+              <Text style={styles.modalButtonText}>Continue</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.secondaryButton]}
+              onPress={() => {
+                newGame();
+                setShowSavedGameModal(false);
+              }}
+            >
+              <Text style={styles.modalButtonText}>New Game</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Game Over Modal */}
-      <Modal
-        transparent={true}
-        visible={gameOver}
-        animationType="fade"
-      >
+      <Modal transparent={true} visible={gameOver} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Game Over!</Text>
@@ -101,14 +223,11 @@ const GameScreen = () => {
             {score >= highScore && (
               <Text style={styles.newHighScore}>New High Score!</Text>
             )}
-            <TouchableOpacity 
-              style={styles.modalButton} 
-              onPress={newGame}
-            >
+            <TouchableOpacity style={styles.modalButton} onPress={newGame}>
               <Text style={styles.modalButtonText}>Play Again</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modalButton, styles.secondaryButton]} 
+            <TouchableOpacity
+              style={[styles.modalButton, styles.secondaryButton]}
               onPress={() => navigation.navigate('MainMenu')}
             >
               <Text style={styles.modalButtonText}>Main Menu</Text>
@@ -212,6 +331,20 @@ const styles = StyleSheet.create({
     color: '#776E65',
     marginBottom: 20,
   },
+  modalButton: {
+    backgroundColor: '#8F7A66',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 5,
+    marginTop: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   modalScore: {
     fontSize: 22,
     color: '#776E65',
@@ -223,22 +356,8 @@ const styles = StyleSheet.create({
     color: '#F67C5F',
     marginBottom: 20,
   },
-  modalButton: {
-    backgroundColor: '#8F7A66',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 5,
-    marginTop: 10,
-    width: '100%',
-    alignItems: 'center',
-  },
   secondaryButton: {
     backgroundColor: '#BBADA0',
-  },
-  modalButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
 });
 
