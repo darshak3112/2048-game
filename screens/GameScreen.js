@@ -1,161 +1,57 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import React from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  Modal, 
+  SafeAreaView 
+} from 'react-native';
+import GestureRecognizer from 'react-native-swipe-gestures';
+import { useNavigation } from '@react-navigation/native';
+import { useGameLogic } from '../utils/gameLogic';
 import GridTile from '../components/GridTile';
-import { initializeBoard, addNewTile, moveTiles, isGameOver } from '../utils/gameLogic';
+import _ from 'lodash';
 
-export default function GameScreen({ route, navigation }) {
-  const { gridSize = 4 } = route.params || {};
-  const [board, setBoard] = useState([]);
-  const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [previousBoards, setPreviousBoards] = useState([]);
-  const [previousScores, setPreviousScores] = useState([]);
+const GameScreen = () => {
+  const navigation = useNavigation();
+  const { 
+    gridData, 
+    score, 
+    highScore, 
+    gameOver, 
+    onSwipeUp, 
+    onSwipeDown, 
+    onSwipeLeft, 
+    onSwipeRight, 
+    newGame 
+  } = useGameLogic();
 
-  // Initialize the board
-  useEffect(() => {
-    resetGame();
-  }, []);
-
-  const checkGameOver = useCallback((currentBoard) => {
-    if (isGameOver(currentBoard)) {
-      setGameOver(true);
-      setTimeout(() => {
-        Alert.alert('Game Over!', `Your final score is ${score}`, [
-          {text: 'Try Again', onPress: resetGame},
-          {text: 'Main Menu', onPress: () => navigation.navigate('MainMenu')}
-        ]);
-      }, 300);
-    }
-  }, [score, navigation]);
-
-  const handleMove = useCallback((direction) => {
-    if (gameOver) return;
-    
-    // Save current state for undo
-    setPreviousBoards(prev => [...prev, board.map(row => [...row])]);
-    setPreviousScores(prev => [...prev, score]);
-    
-    const { newBoard, scoreDelta } = moveTiles(direction, board);
-    
-    // Check if the board changed
-    const boardChanged = JSON.stringify(newBoard) !== JSON.stringify(board);
-    
-    if (boardChanged) {
-      const updatedBoard = addNewTile(newBoard);
-      setBoard(updatedBoard);
-      setScore(prev => prev + scoreDelta);
-      
-      // Check if game is over
-      checkGameOver(updatedBoard);
-    }
-  }, [board, score, gameOver, checkGameOver]);
-
-  const undoMove = () => {
-    if (previousBoards.length > 0) {
-      const lastBoard = previousBoards[previousBoards.length - 1];
-      const lastScore = previousScores[previousScores.length - 1];
-      
-      setBoard(lastBoard);
-      setScore(lastScore);
-      setPreviousBoards(prev => prev.slice(0, -1));
-      setPreviousScores(prev => prev.slice(0, -1));
-      setGameOver(false);
-    }
+  const config = {
+    velocityThreshold: 0.3,
+    directionalOffsetThreshold: 80
   };
 
-  const resetGame = () => {
-    let newBoard = initializeBoard(gridSize);
-    newBoard = addNewTile(newBoard);
-    newBoard = addNewTile(newBoard);
-    setBoard(newBoard);
-    setScore(0);
-    setGameOver(false);
-    setPreviousBoards([]);
-    setPreviousScores([]);
-  };
-
-  // Set up gestures
-  const swipeGesture = Gesture.Pan()
-    .activateAfterLongPress(0) // No long press delay
-    .onEnd((event) => {
-      const { translationX, translationY } = event;
-      const SWIPE_THRESHOLD = 20;
-      
-      // Determine swipe direction based on most significant axis
-      if (Math.abs(translationX) > Math.abs(translationY)) {
-        // Horizontal swipe
-        if (translationX > SWIPE_THRESHOLD) {
-          console.log("Swipe right detected");
-          handleMove('right');
-        } else if (translationX < -SWIPE_THRESHOLD) {
-          console.log("Swipe left detected");
-          handleMove('left');
-        }
-      } else {
-        // Vertical swipe
-        if (translationY > SWIPE_THRESHOLD) {
-          console.log("Swipe down detected");
-          handleMove('down');
-        } else if (translationY < -SWIPE_THRESHOLD) {
-          console.log("Swipe up detected");
-          handleMove('up');
-        }
-      }
-    });
-
-  // Calculate tile size based on screen width and grid size
-  const screenWidth = Dimensions.get('window').width;
-  const gridPadding = 16;
-  const tileMargin = 6;
-  const tileSize = (screenWidth - (gridPadding * 2) - (tileMargin * 2 * gridSize)) / gridSize;
-  
-  // Add keyboard/button controls for testing or alternative input
-  const controlButtons = (
-    <View style={styles.directionButtons}>
-      <TouchableOpacity style={styles.dirButton} onPress={() => handleMove('up')}>
-        <Text style={styles.dirButtonText}>↑</Text>
-      </TouchableOpacity>
-      <View style={styles.middleButtons}>
-        <TouchableOpacity style={styles.dirButton} onPress={() => handleMove('left')}>
-          <Text style={styles.dirButtonText}>←</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.dirButton} onPress={() => handleMove('right')}>
-          <Text style={styles.dirButtonText}>→</Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity style={styles.dirButton} onPress={() => handleMove('down')}>
-        <Text style={styles.dirButtonText}>↓</Text>
-      </TouchableOpacity>
-    </View>
-  );
-  
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>2048</Text>
-          <Text style={styles.subtitle}>{gridSize}x{gridSize} Grid</Text>
-        </View>
+        <Text style={styles.title}>2048</Text>
         <View style={styles.scoreContainer}>
-          <Text style={styles.scoreLabel}>SCORE</Text>
-          <Text style={styles.scoreValue}>{score}</Text>
+          <View style={styles.scoreBox}>
+            <Text style={styles.scoreLabel}>SCORE</Text>
+            <Text style={styles.scoreValue}>{score}</Text>
+          </View>
+          <View style={styles.scoreBox}>
+            <Text style={styles.scoreLabel}>BEST</Text>
+            <Text style={styles.scoreValue}>{highScore}</Text>
+          </View>
         </View>
       </View>
-      
-      <View style={styles.buttonRow}>
-        <TouchableOpacity 
-          style={[styles.button, previousBoards.length === 0 && styles.buttonDisabled]} 
-          onPress={undoMove}
-          disabled={previousBoards.length === 0}
-        >
-          <Text style={styles.buttonText}>Undo</Text>
+
+      <View style={styles.controls}>
+        <TouchableOpacity style={styles.button} onPress={newGame}>
+          <Text style={styles.buttonText}>New Game</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.button} onPress={resetGame}>
-          <Text style={styles.buttonText}>Reset</Text>
-        </TouchableOpacity>
-        
         <TouchableOpacity 
           style={styles.button} 
           onPress={() => navigation.navigate('MainMenu')}
@@ -164,135 +60,186 @@ export default function GameScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      <GestureDetector gesture={swipeGesture}>
-        <View style={[
-          styles.gridContainer, 
-          { width: screenWidth - (gridPadding * 2), height: screenWidth - (gridPadding * 2) }
-        ]}>
-          {board.map((row, rowIndex) => (
-            <View key={`row-${rowIndex}`} style={styles.row}>
-              {row.map((value, colIndex) => (
+      <Text style={styles.instructions}>
+        Swipe to move tiles. Match same numbers to combine them!
+      </Text>
+
+      <GestureRecognizer
+        onSwipeUp={onSwipeUp}
+        onSwipeDown={onSwipeDown}
+        onSwipeLeft={onSwipeLeft}
+        onSwipeRight={onSwipeRight}
+        config={config}
+        style={styles.gestureContainer}
+      >
+        <View style={styles.gridContainer}>
+          {_.range(4).map(row => (
+            <View key={`row-${row}`} style={styles.gridRow}>
+              {_.range(4).map(col => (
                 <GridTile 
-                  key={`tile-${rowIndex}-${colIndex}`} 
-                  value={value} 
-                  size={tileSize} 
+                  key={`cell-${row}-${col}`} 
+                  value={gridData[row][col]} 
+                  row={row} 
+                  col={col} 
                 />
               ))}
             </View>
           ))}
         </View>
-      </GestureDetector>
-      
-      {/* Alternative directional controls */}
-      {controlButtons}
-      
-      <Text style={styles.instructions}>
-        Swipe to move tiles or use direction buttons
-      </Text>
-    </View>
+      </GestureRecognizer>
+
+      {/* Game Over Modal */}
+      <Modal
+        transparent={true}
+        visible={gameOver}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Game Over!</Text>
+            <Text style={styles.modalScore}>Score: {score}</Text>
+            {score >= highScore && (
+              <Text style={styles.newHighScore}>New High Score!</Text>
+            )}
+            <TouchableOpacity 
+              style={styles.modalButton} 
+              onPress={newGame}
+            >
+              <Text style={styles.modalButtonText}>Play Again</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.secondaryButton]} 
+              onPress={() => navigation.navigate('MainMenu')}
+            >
+              <Text style={styles.modalButtonText}>Main Menu</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#faf8ef',
-    padding: 16,
-    alignItems: 'center',
+    backgroundColor: '#FAF8EF',
+    padding: 20,
   },
   header: {
-    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
   title: {
-    fontSize: 36,
+    fontSize: 48,
     fontWeight: 'bold',
-    color: '#776e65',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#776e65',
+    color: '#776E65',
   },
   scoreContainer: {
-    backgroundColor: '#bbada0',
+    flexDirection: 'row',
+  },
+  scoreBox: {
+    backgroundColor: '#BBADA0',
     padding: 10,
+    marginLeft: 10,
     borderRadius: 5,
     alignItems: 'center',
     minWidth: 80,
   },
   scoreLabel: {
-    color: '#eee4da',
-    fontSize: 14,
+    color: '#EEE4DA',
+    fontSize: 12,
     fontWeight: 'bold',
   },
   scoreValue: {
-    color: '#ffffff',
-    fontSize: 22,
+    color: 'white',
+    fontSize: 20,
     fontWeight: 'bold',
   },
-  buttonRow: {
+  controls: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#8f7a66',
+    backgroundColor: '#8F7A66',
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 5,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#cdc1b4',
+    marginRight: 10,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 16,
-  },
-  gridContainer: {
-    backgroundColor: '#bbada0',
-    borderRadius: 8,
-    padding: 8,
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  directionButtons: {
-    marginTop: 20,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 200,
-  },
-  middleButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginVertical: 8,
-  },
-  dirButton: {
-    backgroundColor: '#bbada0',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    margin: 4,
-  },
-  dirButtonText: {
-    color: '#f9f6f2',
-    fontSize: 24,
-    fontWeight: 'bold',
   },
   instructions: {
-    color: '#776e65',
-    fontSize: 16,
-    marginTop: 20,
+    marginBottom: 20,
+    color: '#776E65',
+    fontSize: 14,
+    fontWeight: '500',
     textAlign: 'center',
-  }
+  },
+  gestureContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  gridContainer: {
+    backgroundColor: '#BBADA0',
+    borderRadius: 8,
+    padding: 10,
+    alignSelf: 'center',
+  },
+  gridRow: {
+    flexDirection: 'row',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FAF8EF',
+    padding: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#776E65',
+    marginBottom: 20,
+  },
+  modalScore: {
+    fontSize: 22,
+    color: '#776E65',
+    marginBottom: 10,
+  },
+  newHighScore: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#F67C5F',
+    marginBottom: 20,
+  },
+  modalButton: {
+    backgroundColor: '#8F7A66',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 5,
+    marginTop: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: '#BBADA0',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });
+
+export default GameScreen;

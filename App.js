@@ -1,15 +1,21 @@
-import 'react-native-gesture-handler';
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import AppNavigator from './navigation/AppNavigator';
+import { StyleSheet, View } from 'react-native';
+import { AppNavigator } from './navigation/AppNavigator';
+import { GameLogicProvider } from './utils/gameLogic';
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
+    <GameLogicProvider>
+      <View style={styles.container}>
         <AppNavigator />
-      </NavigationContainer>
-    </GestureHandlerRootView>
+      </View>
+    </GameLogicProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FAF8EF',
+  },
+});

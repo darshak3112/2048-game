@@ -1,28 +1,26 @@
+import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import NotificationPermission from '../screens/NotificationPermission';
-import MainMenu from '../screens/MainMenu';
+import { NavigationContainer } from '@react-navigation/native';
 import GameScreen from '../screens/GameScreen';
+import MainMenu from '../screens/MainMenu';
+import NotificationPermission from '../screens/NotificationPermission';
 
 const Stack = createStackNavigator();
 
-export default function AppNavigator() {
+export const AppNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="NotificationPermission">
-      <Stack.Screen 
-        name="NotificationPermission" 
-        component={NotificationPermission}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="MainMenu" 
-        component={MainMenu} 
-        options={{ title: '2048 Game' }}
-      />
-      <Stack.Screen 
-        name="GameScreen" 
-        component={GameScreen}
-        options={{ headerShown: false }}
-      />
-    </Stack.Navigator>
+    <NavigationContainer>
+      <Stack.Navigator 
+        initialRouteName="MainMenu"
+        screenOptions={{
+          headerShown: false,
+          cardStyle: { backgroundColor: '#FAF8EF' }
+        }}
+      >
+        <Stack.Screen name="MainMenu" component={MainMenu} />
+        <Stack.Screen name="GameScreen" component={GameScreen} />
+        <Stack.Screen name="NotificationPermission" component={NotificationPermission} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
-}
+};

@@ -1,83 +1,77 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, View, Animated } from 'react-native';
+import { useGameLogic } from '../utils/gameLogic';
 
-const GridTile = ({ value, size }) => {
-  // Dynamic font size based on number of digits and tile size
-  const getFontSize = () => {
-    if (!value) return size * 0.5;
-    
-    if (value >= 1024) {
-      return size * 0.28;
-    } else if (value >= 100) {
-      return size * 0.35;
+const GridTile = ({ value, row, col }) => {
+  const { getColor, getTextColor } = useGameLogic();
+  const scale = React.useRef(new Animated.Value(value ? 1 : 0.3)).current;
+  
+  useEffect(() => {
+    if (value) {
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 5,
+        tension: 100,
+        useNativeDriver: true
+      }).start();
     } else {
-      return size * 0.5;
+      scale.setValue(0.3);
     }
+  }, [value]);
+
+  const getFontSize = () => {
+    if (!value) return 28;
+    const length = value.toString().length;
+    if (length > 3) return 20;
+    if (length > 2) return 24;
+    return 28;
   };
 
   return (
-    <View 
+    <Animated.View
       style={[
-        styles.tile, 
-        { 
-          width: size, 
-          height: size,
-          backgroundColor: getTileColor(value),
+        styles.tile,
+        {
+          backgroundColor: getColor(value),
+          transform: [{ scale }]
         }
       ]}
     >
-      {value > 0 && (
-        <Text 
+      {value ? (
+        <Text
           style={[
-            styles.tileText, 
-            { 
-              fontSize: getFontSize(),
-              color: value <= 4 ? '#776e65' : '#f9f6f2' 
+            styles.tileText,
+            {
+              color: getTextColor(value),
+              fontSize: getFontSize()
             }
           ]}
         >
           {value}
         </Text>
-      )}
-    </View>
+      ) : null}
+    </Animated.View>
   );
-};
-
-const getTileColor = (value) => {
-  const colors = {
-    0: '#cdc1b4',
-    2: '#eee4da',
-    4: '#ede0c8',
-    8: '#f2b179',
-    16: '#f59563',
-    32: '#f67c5f',
-    64: '#f65e3b',
-    128: '#edcf72',
-    256: '#edcc61',
-    512: '#edc850',
-    1024: '#edc53f',
-    2048: '#edc22e',
-    4096: '#3c3a32',
-    8192: '#3c3a32',
-  };
-  return colors[value] || '#3c3a32';
 };
 
 const styles = StyleSheet.create({
   tile: {
-    borderRadius: 6,
-    margin: 6,
+    width: 70,
+    height: 70,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    margin: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1,
-    elevation: 2,
+    elevation: 2
   },
   tileText: {
     fontWeight: 'bold',
-  },
+    textAlign: 'center'
+  }
 });
 
 export default GridTile;
