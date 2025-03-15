@@ -614,18 +614,17 @@ export const GameLogicProvider = ({ children }) => {
   const saveGameState = async () => {
     try {
       const key = `@2048_gameState_${gridSize}`
-      await AsyncStorage.setItem(
-        key,
-        JSON.stringify({
-          gridData,
-          score,
-          gameHistory,
-          redoHistory,
-          reachedTarget,
-          continueAfterTarget,
-          gameOver,
-        }),
-      )
+      const gameState = {
+        gridData: _.cloneDeep(gridData),
+        score,
+        gameHistory: _.cloneDeep(gameHistory),
+        redoHistory: _.cloneDeep(redoHistory),
+        reachedTarget,
+        continueAfterTarget,
+        gameOver,
+      }
+      
+      await AsyncStorage.setItem(key, JSON.stringify(gameState))
     } catch (error) {
       console.log("Error saving game state", error)
     }
@@ -635,8 +634,9 @@ export const GameLogicProvider = ({ children }) => {
     try {
       const key = `@2048_gameState_${gridSize}`
       const savedState = await AsyncStorage.getItem(key)
-
+  
       if (savedState) {
+        const parsedState = JSON.parse(savedState)
         const {
           gridData: savedGrid,
           score: savedScore,
@@ -645,8 +645,8 @@ export const GameLogicProvider = ({ children }) => {
           reachedTarget: savedReachedTarget = false,
           continueAfterTarget: savedContinueAfterTarget = false,
           gameOver: savedGameOver = false,
-        } = JSON.parse(savedState)
-
+        } = parsedState
+  
         setGridData(savedGrid)
         setScore(savedScore)
         setGameHistory(savedHistory)
@@ -654,13 +654,16 @@ export const GameLogicProvider = ({ children }) => {
         setReachedTarget(savedReachedTarget)
         setContinueAfterTarget(savedContinueAfterTarget)
         setGameOver(savedGameOver)
+        return true
       } else {
         // No saved game for this size, start a new one
         newGame(gridSize)
+        return false
       }
     } catch (error) {
       console.log("Error loading game state", error)
       newGame(gridSize)
+      return false
     }
   }
 
